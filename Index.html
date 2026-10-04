@@ -1,0 +1,1365 @@
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Ghoul Coins: Village Realm</title>
+<style>
+:root{--bg:#121814;--fg:#e8e2f4;--wall:#2a502e;--floor:#18281b;--ghoul:#c084fc;--npc:#38bdf8;--coin:#fbbf24;--me:#818cf8;--bad:#f87171;--btn:#2d3748;--bld-wall:#64381b;--bld-roof:#991b1b;--boss:#ef4444;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+@media (prefers-color-scheme:light){:root:not([data-theme="dark"]){--bg:#eef2e4;--fg:#1e293b;--wall:#3f7a43;--floor:#d6e8bf;--ghoul:#7e22ce;--npc:#0284c7;--coin:#d97706;--me:#4f46e5;--bad:#dc2626;--btn:#cbd5e1;--bld-wall:#854d0e;--bld-roof:#b91c1c}}
+:root[data-theme="light"]{--bg:#eef2e4;--fg:#1e293b;--wall:#3f7a43;--floor:#d6e8bf;--ghoul:#7e22ce;--npc:#0284c7;--coin:#d97706;--me:#4f46e5;--bad:#dc2626;--btn:#cbd5e1;--bld-wall:#854d0e;--bld-roof:#b91c1c}
+html{scroll-padding-top:env(safe-area-inset-top,0px)}
+body{margin:0;background:var(--bg);color:var(--fg);font:15px/1.4 ui-monospace,Menlo,Consolas,monospace;display:flex;flex-direction:column;align-items:center;gap:8px;padding:10px;user-select:none;-webkit-user-select:none;position:relative}
+h1{font-size:18px;margin:0}
+
+#dev-btn{position:fixed;top:calc(10px + env(safe-area-inset-top,0px));right:10px;z-index:200;font-size:12px;height:32px;padding:0 12px;font-weight:bold;background:#8b5cf6;color:#fff;border:2px solid #c084fc;border-radius:6px;cursor:pointer;box-shadow:0 2px 8px rgba(0,0,0,0.4);transition:all 0.15s}
+#dev-btn.active{background:#ef4444;border-color:#f87171;box-shadow:0 0 12px #f87171;animation:pulse 1.5s infinite}
+@keyframes pulse{0%{transform:scale(1)}50%{transform:scale(1.05)}100%{transform:scale(1)}}
+@media (prefers-reduced-motion:reduce){#dev-btn.active{animation:none}}
+
+#hud{display:flex;gap:10px;flex-wrap:wrap;justify-content:center;font-weight:bold;font-size:12px;background:rgba(0,0,0,0.25);padding:6px 12px;border-radius:6px;width:100%;max-width:672px;box-sizing:border-box}
+canvas{width:100%;max-width:672px;border:3px solid var(--wall);border-radius:8px;image-rendering:pixelated;box-shadow:0 4px 12px rgba(0,0,0,0.3);box-sizing:border-box}
+#log{min-height:2.2em;font-size:13px;text-align:center;max-width:672px;width:100%;background:rgba(0,0,0,0.25);padding:6px 10px;border-radius:6px;display:flex;align-items:center;justify-content:center;box-sizing:border-box}
+#pad{display:grid;grid-template-columns:repeat(3,60px);gap:6px;margin-top:2px}
+button{background:var(--btn);color:var(--fg);border:0;border-radius:8px;font:inherit;font-size:20px;height:48px;cursor:pointer;touch-action:manipulation;-webkit-tap-highlight-color:transparent}
+button:active{opacity:.6}
+button:focus-visible{outline:2px solid var(--coin);outline-offset:2px}
+#controls{display:flex;gap:8px;margin-top:4px;flex-wrap:wrap;justify-content:center}
+#re,#pot-btn,#inv-btn,#quest-btn,#lb-btn{font-size:13px;height:36px;padding:0 12px;font-weight:bold}
+
+/* Hotbar */
+#hotbar{display:flex;gap:6px;flex-wrap:wrap;justify-content:center;width:100%;max-width:672px}
+.hb{position:relative;width:62px;height:56px;padding:0;border:2px solid var(--wall);display:flex;flex-direction:column;align-items:center;justify-content:center;line-height:1.1;gap:2px}
+.hb small{font-size:10px;opacity:.9}
+.hb .k{position:absolute;top:2px;left:5px;font-size:9px;opacity:.7}
+.hb.locked{opacity:.35}
+.hb.dry{border-color:var(--bad)}
+
+.modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,0.85);backdrop-filter:blur(3px);display:none;align-items:center;justify-content:center;z-index:100;padding:16px}
+.modal-card{background:var(--bg);color:var(--fg);border:3px solid var(--wall);border-radius:12px;padding:18px;max-width:440px;width:100%;max-height:90vh;overflow-y:auto;box-shadow:0 10px 25px rgba(0,0,0,0.7);display:flex;flex-direction:column;gap:12px;box-sizing:border-box}
+
+.sec-title{font-size:13px;font-weight:bold;color:var(--coin);margin-top:4px}
+.grid-select{display:grid;grid-template-columns:repeat(3,1fr);gap:6px}
+.class-grid{grid-template-columns:repeat(2,1fr)}
+.opt-btn{background:rgba(255,255,255,0.05);border:2px solid rgba(255,255,255,0.1);border-radius:8px;padding:8px 6px;display:flex;flex-direction:column;align-items:center;gap:4px;cursor:pointer;transition:all 0.15s;text-align:center}
+.opt-btn.selected{border-color:var(--coin);background:rgba(251,191,36,0.18);box-shadow:0 0 8px rgba(251,191,36,0.3)}
+.opt-icon{font-size:22px}
+.opt-name{font-size:12px;font-weight:bold}
+.opt-desc{font-size:10px;opacity:0.75;line-height:1.2}
+#stat-preview{background:rgba(0,0,0,0.3);border-radius:8px;padding:8px 12px;display:flex;justify-content:space-around;flex-wrap:wrap;gap:6px 12px;font-weight:bold;font-size:13px;border:1px dashed var(--wall)}
+#lb-tabs{display:flex;gap:6px}
+#lb-tabs .act-btn{flex:1;height:34px}
+#lb-tabs .tab-on{outline:2px solid var(--coin);outline-offset:1px}
+#skill-preview{display:flex;flex-direction:column;gap:6px}
+#class-start-btn{background:var(--wall);color:#fff;font-size:15px;height:42px;font-weight:bold;margin-top:4px}
+
+.modal-header{display:flex;justify-content:space-between;align-items:center;border-bottom:2px solid var(--wall);padding-bottom:8px}
+.modal-header h2{font-size:18px;font-weight:bold;margin:0;color:var(--npc)}
+.modal-sub{font-size:12px;opacity:0.85;margin:0}
+.item-list{display:flex;flex-direction:column;gap:8px}
+.item-card{display:flex;justify-content:space-between;align-items:center;gap:8px;background:rgba(255,255,255,0.05);padding:8px 12px;border-radius:8px;border:1px solid rgba(255,255,255,0.1)}
+.item-card.equipped{border-color:var(--coin);background:rgba(251,191,36,0.12)}
+.item-info{display:flex;flex-direction:column;gap:2px}
+.item-title{font-weight:bold;font-size:13px;display:flex;align-items:center;gap:6px}
+.item-desc{font-size:11px;opacity:0.75}
+.act-btn{font-size:12px;height:32px;padding:0 12px;background:var(--wall);color:#fff;border:0;border-radius:6px;font-weight:bold;cursor:pointer;white-space:nowrap}
+.act-btn:disabled{opacity:0.4;cursor:not-allowed}
+.close-modal-btn{background:var(--bad);color:#fff;font-size:14px;height:38px;font-weight:bold;margin-top:6px}
+</style></head><body>
+
+<button id="dev-btn">DEV ⚡</button>
+
+<h1>👻 Ghoul Coins: Village Realm</h1>
+<div id="hud">
+  <span id="hero"></span>
+  <span id="hp"></span>
+  <span id="mp"></span>
+  <span id="weapon"></span>
+  <span id="co"></span>
+  <span id="fl"></span>
+  <span id="po"></span>
+  <span id="be"></span>
+</div>
+<canvas id="c" width="672" height="480"></canvas>
+<div id="log">Move with WASD / arrows. Step into shops or talk to NPCs to interact!</div>
+<div id="hotbar"></div>
+<div id="pad">
+<span></span><button data-d="0,-1">▲</button><span></span>
+<button data-d="-1,0">◀</button><button data-d="0,1">▼</button><button data-d="1,0">▶</button>
+</div>
+<div id="controls">
+  <button id="pot-btn">🧪 Potion (E/Space)</button>
+  <button id="inv-btn">🎒 Inventory (I)</button>
+  <button id="quest-btn">📜 Quests (Q)</button>
+  <button id="lb-btn">🏆 Leaderboard</button>
+  <button id="re">New Run</button>
+</div>
+
+<div id="class-modal" class="modal-overlay">
+  <div class="modal-card">
+    <h2 style="font-size:18px;font-weight:bold;margin:0;text-align:center;color:var(--coin)">Hero Creation</h2>
+    <div class="sec-title">1. Choose Race</div>
+    <div id="race-list" class="grid-select class-grid"></div>
+    <div class="sec-title">2. Choose Class</div>
+    <div id="class-list" class="grid-select class-grid"></div>
+    <div class="sec-title">Combined Starting Stats</div>
+    <div id="stat-preview"></div>
+    <div class="sec-title">Class Skills (hotbar keys 1-4)</div>
+    <div id="skill-preview"></div>
+    <button id="class-start-btn">Enter Dungeon ⚔️</button>
+  </div>
+</div>
+
+<div id="shop-modal" class="modal-overlay">
+  <div class="modal-card">
+    <div class="modal-header">
+      <h2 id="shop-title">Merchant Shop</h2>
+      <span id="shop-gold">🪙 0</span>
+    </div>
+    <p id="shop-sub" class="modal-sub">Welcome traveler! What would you like to buy?</p>
+    <div id="shop-list" class="item-list"></div>
+    <button id="shop-close" class="close-modal-btn">Close</button>
+  </div>
+</div>
+
+<div id="inv-modal" class="modal-overlay">
+  <div class="modal-card">
+    <div class="modal-header">
+      <h2>🎒 Hero Inventory</h2>
+      <span id="inv-gold">🪙 0</span>
+    </div>
+    <p class="modal-sub">Equip weapons or use items from your backpack:</p>
+    <div id="inv-list" class="item-list"></div>
+    <button id="inv-close" class="close-modal-btn">Close Inventory</button>
+  </div>
+</div>
+
+<div id="lb-modal" class="modal-overlay">
+  <div class="modal-card">
+    <div class="modal-header"><h2>🏆 Leaderboard</h2></div>
+    <div id="lb-tabs">
+      <button class="act-btn" data-tab="coins">🪙 Peak coins</button>
+      <button class="act-btn" data-tab="level">⭐ Level</button>
+    </div>
+    <p id="lb-status" class="modal-sub"></p>
+    <div id="lb-list" class="item-list"></div>
+    <button id="lb-close" class="close-modal-btn">Close Leaderboard</button>
+  </div>
+</div>
+
+<div id="quest-modal" class="modal-overlay">
+  <div class="modal-card">
+    <div class="modal-header"><h2>📜 Active Quests</h2></div>
+    <div id="quest-list" class="item-list"></div>
+    <button id="quest-close" class="close-modal-btn">Close Quests</button>
+  </div>
+</div>
+
+<script>
+const W=21,H=15,T=32,c=document.getElementById('c'),x=c.getContext('2d');
+const $=i=>document.getElementById(i),R=n=>Math.floor(Math.random()*n);
+let m,bld,p,gs,npcs=[],coins,fl,over,best=0,msg;
+let vil=null,villageFloors={},lastFriendly=null,allies=[];
+let shopOpen=false,classModalOpen=false,invOpen=false,questOpen=false,lbOpen=false,currentNpc=null;
+let godMode=false;
+let floorData={};
+const tips=['Vampires lurk from floor 3. They drain your blood!','Level up to grow stronger and heal fully.','The stairs (>) restore +3 health when descending.','Save coins for village shops to upgrade weapons!','Spells fire in the direction you last moved. Face your enemy first!','A Rune of Return takes you back to the last friendly village.','Other races may not welcome you. Their guards strike outsiders!','Elves cast skills for less and regain mana twice as fast.','Rage builds when you fight and fades when you rest. Energy refills fast. Focus is steady. Mana is slow.'];
+
+let quests={
+  slayer:{active:false,done:false,count:0,target:5,rewardCoins:40,rewardXp:20},
+  vamp:{active:false,done:false,count:0,target:1,rewardCoins:80,rewardXp:50}
+};
+
+const RACES={
+  human:{name:'Human',icon:'🧍',hpMod:2,atkMod:1,goldMod:10,mpMod:2,magMod:0,desc:'Balanced & versatile stats'},
+  dwarf:{name:'Dwarf',icon:'🧔',hpMod:8,atkMod:0,goldMod:5,mpMod:0,magMod:0,desc:'High Defense & +8 Max HP'},
+  orc:{name:'Orc',icon:'👹',hpMod:-2,atkMod:3,goldMod:0,mpMod:-2,magMod:0,desc:'Brutal force (+3 ATK)'},
+  elf:{name:'Elf',icon:'🧝',hpMod:0,atkMod:0,goldMod:5,mpMod:12,magMod:2,desc:'Arcane talent: +12 MP, +2 Magic, skills cost 1 less, fast mana regen'}
+};
+
+const CLASSES={
+  knight:{name:'Knight',role:'Tank',icon:'🛡️',res:'rage',hp:20,atk:1,mp:50,mag:0,hpLv:5,potions:2,coins:5,desc:'Soaks damage and builds Rage when hit',
+    weapon:{id:'rusty_sword',name:'Rusty Shortsword',icon:'🗡️',atk:1},
+    skills:[
+      {name:'Shield Bash',icon:'🛡️',cost:10,lv:1,type:'melee',scale:'atk',mult:1,base:2,freeze:2,desc:'Hit the enemy you face and stun it for 2 turns'},
+      {name:'Shield Wall',icon:'🧱',cost:15,lv:1,type:'buff',buff:'wall',turns:5,desc:'Take half damage for 5 turns'},
+      {name:'Rallying Cry',icon:'📯',cost:20,lv:3,type:'heal',amount:12,desc:'Restore 12 HP + Magic'},
+      {name:'Retribution',icon:'💥',cost:30,lv:5,type:'aoe',radius:1,scale:'atk',mult:1.5,base:4,desc:'Strike every adjacent enemy for heavy damage'}
+    ]},
+  warrior:{name:'Warrior',role:'Melee DPS',icon:'⚔️',res:'rage',hp:16,atk:3,mp:50,mag:0,hpLv:4,potions:1,coins:5,desc:'Frontline fighter who hits hard',
+    weapon:{id:'iron_dagger',name:'Iron Dagger',icon:'🗡️',atk:2},
+    skills:[
+      {name:'Heroic Strike',icon:'⚔️',cost:10,lv:1,type:'melee',scale:'atk',mult:1.6,base:1,desc:'A powerful blow to the enemy you face'},
+      {name:'Cleave',icon:'🪓',cost:15,lv:1,type:'aoe',radius:1,scale:'atk',mult:1,base:1,desc:'Hit every adjacent enemy'},
+      {name:'Battle Cry',icon:'📣',cost:15,lv:3,type:'buff',buff:'atk',turns:6,desc:'+3 ATK for 6 turns'},
+      {name:'Execute',icon:'☠️',cost:25,lv:5,type:'melee',scale:'atk',mult:1.5,base:3,exec:true,desc:'Double damage against enemies below 40% HP'}
+    ]},
+  paladin:{name:'Paladin',role:'Tank / Healer',icon:'🔨',res:'mana',hp:16,atk:2,mp:18,mag:2,hpLv:4,potions:1,coins:8,desc:'Holy knight who smites and heals',
+    weapon:{id:'blessed_mace',name:'Blessed Mace',icon:'🔨',atk:2},
+    skills:[
+      {name:'Holy Strike',icon:'✨',cost:5,lv:1,type:'melee',scale:'atk',mult:1.2,base:1,heal:3,desc:'Strike the enemy you face and heal 3 HP'},
+      {name:'Lay on Hands',icon:'🙏',cost:8,lv:1,type:'heal',amount:14,desc:'Restore 14 HP + Magic'},
+      {name:'Consecrate',icon:'☀️',cost:9,lv:3,type:'aoe',radius:1,scale:'mag',base:3,desc:'Holy fire burns all adjacent enemies'},
+      {name:'Divine Shield',icon:'🔰',cost:12,lv:5,type:'buff',buff:'divine',turns:2,desc:'Become immune to damage for 2 turns'}
+    ]},
+  rogue:{name:'Rogue',role:'Melee DPS',icon:'🗡️',res:'energy',hp:12,atk:3,mp:60,mag:0,hpLv:3,potions:2,coins:25,desc:'Agile assassin. Energy refills fast',
+    weapon:{id:'thief_blade',name:'Thief Stiletto',icon:'🗡️',atk:2},
+    skills:[
+      {name:'Backstab',icon:'🗡️',cost:15,lv:1,type:'melee',scale:'atk',mult:1.6,base:2,ambush:true,desc:'Strong hit. +50% against stunned or blinded foes'},
+      {name:'Poison Blade',icon:'🧪',cost:15,lv:1,type:'melee',scale:'atk',mult:0.8,base:0,dot:{d:3,t:4},desc:'Hit and poison for 3 damage over 4 turns'},
+      {name:'Vanish',icon:'💨',cost:30,lv:3,type:'vanish',desc:'Blind all enemies within 6 tiles for 3 turns'},
+      {name:'Eviscerate',icon:'🩸',cost:40,lv:5,type:'melee',scale:'atk',mult:2.5,base:3,ambush:true,desc:'A devastating finisher'}
+    ]},
+  ranger:{name:'Ranger',role:'Ranged DPS',icon:'🏹',res:'focus',hp:13,atk:2,mp:30,mag:0,hpLv:3,potions:2,coins:10,desc:'Hunter who strikes from afar',
+    weapon:{id:'hunter_bow',name:'Hunter Bow',icon:'🏹',atk:2},
+    skills:[
+      {name:'Aimed Shot',icon:'🎯',cost:8,lv:1,type:'ranged',range:7,scale:'atk',mult:1.2,base:2,desc:'Shoot the first enemy within 7 tiles in the direction you face'},
+      {name:'Frost Arrow',icon:'❄️',cost:10,lv:1,type:'ranged',range:6,scale:'atk',mult:0.7,base:1,freeze:2,desc:'Chill an enemy within 6 tiles for 2 turns'},
+      {name:'Multishot',icon:'🏹',cost:14,lv:3,type:'multi',n:3,range:6,scale:'atk',mult:0.9,base:1,desc:'Fire at the 3 nearest enemies within 6 tiles'},
+      {name:'Volley',icon:'🌧️',cost:22,lv:5,type:'aoe',radius:3,scale:'atk',mult:1.1,base:3,desc:'Rain arrows on every enemy within 3 tiles'}
+    ]},
+  mage:{name:'Mage',role:'Ranged DPS',icon:'✨',res:'mana',hp:11,atk:1,mp:26,mag:4,hpLv:2,potions:2,coins:10,desc:'Arcane caster with a deep mana pool',
+    weapon:{id:'wooden_staff',name:'Apprentice Wand',icon:'🪄',atk:1},
+    skills:[
+      {name:'Firebolt',icon:'🔥',cost:4,lv:1,type:'ranged',range:5,scale:'mag',base:4,var:4,desc:'Bolt hits the first enemy within 5 tiles you face'},
+      {name:'Frost Nova',icon:'❄️',cost:7,lv:1,type:'aoe',radius:1,scale:'mag',base:2,var:2,freeze:2,desc:'Hurt and freeze all adjacent enemies'},
+      {name:'Lightning',icon:'⚡',cost:10,lv:3,type:'multi',n:3,range:5,scale:'mag',base:5,var:4,desc:'Strike the 3 nearest enemies within 5 tiles'},
+      {name:'Meteor',icon:'☄️',cost:22,lv:5,type:'aoe',radius:3,scale:'mag',mult:1.5,base:6,var:4,desc:'Crush every enemy within 3 tiles'}
+    ]},
+  warlock:{name:'Warlock',role:'Ranged DPS / Pets',icon:'👁️',res:'mana',hp:11,atk:1,mp:24,mag:3,hpLv:2,potions:2,coins:10,desc:'Dark caster with curses and a demon pet',
+    weapon:{id:'gnarled_wand',name:'Gnarled Wand',icon:'🪄',atk:1},
+    skills:[
+      {name:'Shadow Bolt',icon:'🌑',cost:4,lv:1,type:'ranged',range:5,scale:'mag',base:5,var:3,desc:'Dark bolt hits the first enemy within 5 tiles you face'},
+      {name:'Corruption',icon:'☠️',cost:6,lv:1,type:'ranged',range:5,scale:'mag',mult:0.4,base:1,dot:{d:3,t:5,mag:true},desc:'Rot an enemy for 3+ damage over 5 turns'},
+      {name:'Drain Life',icon:'🩸',cost:8,lv:3,type:'ranged',range:4,scale:'mag',base:4,var:3,drain:true,desc:'Steal HP equal to the damage dealt'},
+      {name:'Summon Imp',icon:'😈',cost:14,lv:5,type:'summon',count:1,ally:'imp',ch:'i',ttl:40,hp:12,hpFl:3,magHp:2,pow:3,desc:'Call a fiery imp to fight for you'}
+    ]},
+  priest:{name:'Priest',role:'Healer',icon:'📿',res:'mana',hp:11,atk:1,mp:30,mag:4,hpLv:3,potions:2,coins:10,desc:'Master healer with holy magic',
+    weapon:{id:'oak_staff',name:'Oak Staff',icon:'🪄',atk:1},
+    skills:[
+      {name:'Smite',icon:'☀️',cost:4,lv:1,type:'ranged',range:5,scale:'mag',base:3,var:3,desc:'Holy light hits the first enemy within 5 tiles you face'},
+      {name:'Heal',icon:'💚',cost:6,lv:1,type:'heal',amount:10,desc:'Restore 10 HP + Magic'},
+      {name:'Renew',icon:'🌿',cost:8,lv:3,type:'hot',turns:4,amt:3,desc:'Heal 3 + Magic HP each turn for 4 turns'},
+      {name:'Holy Nova',icon:'🌟',cost:14,lv:5,type:'aoe',radius:2,scale:'mag',base:3,var:3,heal:3,desc:'Burn enemies within 2 tiles and heal 3 HP per enemy hit'}
+    ]}
+};
+
+const VRACE={
+  human:{label:'Human',names:['Willowmere','Hearthfall','Brightmoor'],roof:'#991b1b'},
+  dwarf:{label:'Dwarven',names:['Ironhold','Deepforge','Stonehelm'],roof:'#475569'},
+  orc:{label:'Orcish',names:['Gorash Camp','Skullmaw','Bloodtusk'],roof:'#4d7c0f'},
+  elf:{label:'Elven',names:['Silverglade','Moonwhisper','Lunaris'],roof:'#0e7490'}
+};
+
+const RES={mana:{n:'MP',i:'💧'},rage:{n:'Rage',i:'💢'},energy:{n:'Energy',i:'⚡'},focus:{n:'Focus',i:'🎯'}};
+const VSPELLS=[
+  {name:'Unnatural Regeneration',icon:'🩸',cost:10,lv:1,vamp:true,type:'hot',turns:3,amt:5,desc:'Vampires only: heal 5 + Magic HP each move for 3 moves'},
+  {name:'Call of the Ghouls',icon:'🧟',cost:14,lv:1,vamp:true,type:'summon',count:3,ally:'ghoul',ch:'g',ttl:25,hp:8,hpFl:2,magHp:1,pow:0,desc:'Vampires only: raise 3 ghouls that fight for you'}
+];
+
+let selectedRaceKey='human';
+let selectedClassKey='warrior';
+
+try{best=+localStorage.getItem('gc_best')||0}catch(e){}
+const css=v=>getComputedStyle(document.documentElement).getPropertyValue(v).trim();
+
+$('dev-btn').onclick=()=>{
+  godMode=!godMode;
+  const devBtn=$('dev-btn');
+  if(godMode){
+    devBtn.classList.add('active');
+    devBtn.textContent='DEV [GOD ON]';
+    if(p){p.cheated=true;p.hp=9999;p.max=9999;p.baseAtk=999;coins+=9999;p.potions=99;p.maxMp=999;p.mp=999;p.magic=50;p.manaPots=99;p.runes=Math.max(p.runes,3);}
+    say('⚡ GOD MODE ACTIVATED! (9999 HP, 999 ATK, 9999 Gold, Infinite Mana, Invincible) This run is now off the leaderboard.');
+  } else {
+    devBtn.classList.remove('active');
+    devBtn.textContent='DEV ⚡';
+    if(p){p.hp=20;p.max=20;p.baseAtk=2;p.maxMp=10;p.mp=10;p.magic=1;}
+    say('⚡ God mode deactivated.'+(p&&p.cheated?' This run stays off the leaderboard.':''));
+  }
+  draw();
+};
+
+function openClassSelect(){
+  classModalOpen=true;
+  renderRaceOptions();renderClassOptions();updateStatPreview();
+  $('class-modal').style.display='flex';
+}
+
+function renderRaceOptions(){
+  const container=$('race-list');container.innerHTML='';
+  Object.keys(RACES).forEach(key=>{
+    const r=RACES[key];
+    const div=document.createElement('div');
+    div.className='opt-btn'+(key===selectedRaceKey?' selected':'');
+    div.innerHTML=`<span class="opt-icon">${r.icon}</span><span class="opt-name">${r.name}</span><span class="opt-desc">${r.desc}</span>`;
+    div.onclick=()=>{selectedRaceKey=key;renderRaceOptions();updateStatPreview();};
+    container.appendChild(div);
+  });
+}
+
+function renderClassOptions(){
+  const container=$('class-list');container.innerHTML='';
+  Object.keys(CLASSES).forEach(key=>{
+    const cl=CLASSES[key];
+    const div=document.createElement('div');
+    div.className='opt-btn'+(key===selectedClassKey?' selected':'');
+    div.innerHTML=`<span class="opt-icon">${cl.icon}</span><span class="opt-name">${cl.name}</span><span class="opt-desc"><b>${cl.role}</b> - ${cl.desc}</span>`;
+    div.onclick=()=>{selectedClassKey=key;renderClassOptions();updateStatPreview();};
+    container.appendChild(div);
+  });
+}
+
+function updateStatPreview(){
+  const r=RACES[selectedRaceKey],cl=CLASSES[selectedClassKey],rs=RES[cl.res];
+  const totalHP=cl.hp+r.hpMod;
+  const totalAtk=cl.atk+r.atkMod+cl.weapon.atk;
+  $('stat-preview').innerHTML=`
+    <span>${cl.icon} ${cl.role}</span>
+    <span>❤ ${totalHP} HP</span>
+    <span>${rs.i} ${Math.max(0,cl.mp+r.mpMod)} ${rs.n}</span>
+    <span>🔮 ${cl.mag+r.magMod} Magic</span>
+    <span>⚔ ${totalAtk+1}-${totalAtk+3} ATK</span>
+    <span>🪙 ${cl.coins+r.goldMod} Gold</span>
+    <span>🧪 ${cl.potions} Potions</span>`;
+  $('skill-preview').innerHTML=cl.skills.map(sk=>`<div class="item-card"><div class="item-info"><span class="item-title">${sk.icon} ${sk.name}</span><span class="item-desc">${sk.desc}</span></div><span class="item-desc" style="text-align:right;white-space:nowrap">${sk.cost} ${rs.n}<br>Lv ${sk.lv}</span></div>`).join('');
+}
+
+$('class-start-btn').onclick=()=>{
+  classModalOpen=false;
+  $('class-modal').style.display='none';
+  initRun();
+};
+
+function turnIntoVampire(){
+  if(!p.isVampire){
+    p.isVampire=true;
+    p.max+=30;p.hp+=30;
+    p.icon='🧛';p.raceName='Vampire';
+    say('Dark power surges through you! +30 Max HP! Villagers will now shun you.');
+    closeShop();
+  }
+}
+
+const SHOP_DATA={
+  'MYSTERY':{
+    name:'Mysterious Shrine 🔮',
+    sub:'"I can grant you eternal night & unholy dark vigor... for a price."',
+    items:()=>[{
+      name:p.isVampire?'Vampirism Embraced':'Dark Ritual (+30 HP)',
+      desc:p.isVampire?'You are already a creature of the night.':'Costs 100 coins. Gain +30 Max HP, but villagers will refuse to speak to you!',
+      cost:p.isVampire?0:100,
+      action:()=>{
+        if(!p.isVampire) turnIntoVampire();
+        else say('Mysterious Man: "You already bear the curse, bloodsucker."');
+      }
+    }]
+  },
+  'Q_GUARD':{
+    name:'Captain Vane 🛡️',
+    sub:'"The ghouls outside are pressing our defenses! Clear them out!"',
+    items:()=>[{
+      name:quests.slayer.done?'Quest Completed':(quests.slayer.active?'Report Ghoul Kills':'Accept: Ghoul Exterminator'),
+      desc:quests.slayer.done?'You saved our guards!':`Slay 5 Ghouls. Current progress: (${quests.slayer.count}/${quests.slayer.target})`,
+      cost:0,
+      action:()=>{
+        if(!quests.slayer.active&&!quests.slayer.done){
+          quests.slayer.active=true;
+          say('Captain Vane: "Kill 5 ghouls and return for 40 gold!"');
+        } else if(quests.slayer.active&&!quests.slayer.done){
+          if(quests.slayer.count>=quests.slayer.target){
+            quests.slayer.done=true;
+            coins+=quests.slayer.rewardCoins;p.xp+=quests.slayer.rewardXp;
+            say(`Captain Vane: "Outstanding work! Take ${quests.slayer.rewardCoins} gold and ${quests.slayer.rewardXp} XP!"`);
+          } else say(`Captain Vane: "Keep hunting! You need ${quests.slayer.target-quests.slayer.count} more ghouls."`);
+        }
+      }
+    }]
+  },
+  'Q_SCOUT':{
+    name:'Scout Elena 🏹',
+    sub:'"A Vampire Lord reigns in the deepest floor (Level 10)!"',
+    items:()=>[{
+      name:quests.vamp.done?'Quest Completed':(quests.vamp.active?'Report Boss Defeat':'Accept: Slay the Vampire Lord'),
+      desc:quests.vamp.done?'The realm is safe!':'Reach Level 10 and slay the Vampire Lord.',
+      cost:0,
+      action:()=>{
+        if(!quests.vamp.active&&!quests.vamp.done){
+          quests.vamp.active=true;
+          say('Scout Elena: "Travel down to Floor 10 and destroy the Vampire Lord!"');
+        } else if(quests.vamp.active&&!quests.vamp.done){
+          if(quests.vamp.count>=quests.vamp.target){
+            quests.vamp.done=true;
+            coins+=quests.vamp.rewardCoins;p.xp+=quests.vamp.rewardXp;
+            say(`Scout Elena: "You did it! Take ${quests.vamp.rewardCoins} gold and ${quests.vamp.rewardXp} XP!"`);
+          } else say('Scout Elena: "The Vampire Lord still lives on Floor 10!"');
+        }
+      }
+    }]
+  },
+  'H':{
+    name:'Healer Clinic ✚',
+    sub:'"Rest your worn bones and heal your wounds."',
+    items:()=>[
+      {name:'Rest & Heal',desc:'Fully restores HP and MP',cost:12,action:()=>{p.hp=p.max;p.mp=p.maxMp;say('Healer: "Your wounds and spirit are restored!"');}},
+      {name:'Vitality Tonic',desc:'+2 Permanently to Max HP',cost:20,action:()=>{p.max+=2;p.hp+=2;say('Healer: "Your body grows stronger!"');}}
+    ]
+  },
+  'M':{
+    name:'Blacksmith Forge ⚔',
+    sub:'"Finest steel around! Buy weapons & refine gear."',
+    items:()=>[
+      {name:'Steel Broadsword (+3 ATK)',desc:'A well-balanced double-edged steel sword',cost:22,action:()=>{addWeaponToInventory({id:'steel_sword',name:'Steel Broadsword',icon:'⚔️',atk:3});say('Blacksmith: "Crafted a Steel Broadsword!"');}},
+      {name:'War Battleaxe (+5 ATK)',desc:'Heavy axe that crushes ghoul skull armor',cost:40,action:()=>{addWeaponToInventory({id:'battle_axe',name:'War Battleaxe',icon:'🪓',atk:5});say('Blacksmith: "Forged a War Battleaxe!"');}},
+      {name:'Ghoul Slayer (+8 ATK)',desc:'Legendary runic blade crafted for ghoul slayers',cost:70,action:()=>{addWeaponToInventory({id:'ghoul_slayer',name:'Ghoul Slayer',icon:'🗡️',atk:8});say('Blacksmith: "Forged the legendary Ghoul Slayer!"');}},
+      {name:'Sharpen Weapon',desc:'+1 Base ATK permanently',cost:15+6*p.baseAtk,action:()=>{p.baseAtk++;say('Blacksmith: "Honed your combat training base ATK!"');}}
+    ]
+  },
+  'A':{
+    name:'Armorer Shop 🛡',
+    sub:'"Sturdy armor to protect against foul ghouls."',
+    items:()=>[{name:'Reinforce Coat',desc:'+4 Permanently to Max HP',cost:18+p.max,action:()=>{p.max+=4;p.hp+=4;say('Armorer: "Reinforced armor crafted!"');}}]
+  },
+  'P':{
+    name:'Alchemy Lab 🧪',
+    sub:'"Potions brewed from ancient herbs and roots."',
+    items:()=>[
+      {name:'Healing Potion',desc:'Restores +8 HP on use',cost:12,action:()=>{p.potions=(p.potions||0)+1;say('Alchemist: "Brewed 1 Healing Potion!"');}},
+      {name:'Mana Potion',desc:'Restores +10 MP on use',cost:12,action:()=>{p.manaPots++;say('Alchemist: "Brewed 1 Mana Potion!"');}},
+      {name:'Full Elixir',desc:'Restores all HP immediately',cost:25,action:()=>{p.hp=p.max;say('Alchemist: "Gulp! Fully restored HP!"');}}
+    ]
+  },
+  'G':{
+    name:'General Store 🧰',
+    sub:'"Tools, trinkets and travelling gear for the dungeon-bound."',
+    items:()=>[
+      {name:'Rune of Return 🌀',desc:'One use. Teleports you to the last friendly village you visited.',cost:45,action:()=>{p.runes++;say('Shopkeeper: "Keep it safe. Use it when things go south!"');}},
+      {name:'Mana Potion 🔷',desc:'Restores +10 MP on use',cost:14,action:()=>{p.manaPots++;say('Shopkeeper: "One mana potion, fresh in."');}},
+      {name:'Smoke Bomb 💨',desc:'Blinds every enemy on the floor for 3 turns',cost:18,action:()=>{p.smoke++;say('Shopkeeper: "Throw it and run!"');}},
+      {name:'Mana Crystal 💎',desc:'+5 Permanently to Max MP',cost:35+p.maxMp,action:()=>{p.maxMp+=5;p.mp+=5;say('Shopkeeper: "It hums with power."');}},
+      {name:'Spell Tome 📖',desc:'+1 Magic Power permanently',cost:40+12*p.magic,action:()=>{p.magic++;say('Shopkeeper: "Your spells will hit harder."');}}
+    ]
+  },
+  'E':{
+    name:'Town Hall 👑',
+    sub:'"Greetings from the Village Elder."',
+    items:(npc)=>[{name:npc&&npc.gifted?'Elder Advice':'Elder Starter Grant',desc:npc&&npc.gifted?'Hear wisdom from the Elder':'+10 Free starter coins',cost:0,action:()=>{
+      if(npc&&!npc.gifted){npc.gifted=true;coins+=10;say('Elder: "Take 10 gold for your quest!"');}
+      else say('Elder: "'+tips[R(tips.length)]+'"');
+    }}]
+  },
+  'T':{
+    name:'Wandering Traveler 🎒',
+    sub:'"A fellow explorer resting on the trail."',
+    items:(npc)=>[{name:npc.used?'Friendly Chat':'Traveler Tip',desc:npc.used?'Share stories of adventure':'+5 Coins & advice',cost:0,action:()=>{
+      if(!npc.used){npc.used=1;coins+=5;say('Traveler: "Take 5 coins. Danger lies ahead!"');}
+      else say('Traveler: "Safe travels, friend!"');
+    }}]
+  }
+};
+
+function checkVampireRejection(npcTag){
+  if(p.isVampire&&npcTag!=='MYSTERY'){
+    const rejects=["Begone demon!","Heathen!","Begone, devil!"];
+    say(rejects[R(rejects.length)]);
+    return true;
+  }
+  return false;
+}
+
+function openShop(npcTag,npcObj){
+  if(checkVampireRejection(npcTag)) return;
+  if(vil&&vil.hostile&&npcTag!=='MYSTERY'){
+    say('The '+vil.label+' villagers snarl: "Outsider! We do not trade with your kind!"');
+    return;
+  }
+  currentNpc=npcObj||{t:npcTag,gifted:false,used:false};
+  shopOpen=true;
+  const data=SHOP_DATA[npcTag]||SHOP_DATA['T'];
+  $('shop-title').textContent=data.name;
+  renderShopItems();
+  $('shop-modal').style.display='flex';
+}
+
+function renderShopItems(){
+  if(!currentNpc) return;
+  const data=SHOP_DATA[currentNpc.t]||SHOP_DATA['T'];
+  const items=data.items(currentNpc);
+  const container=$('shop-list');
+  container.innerHTML='';
+  const disc=(vil&&!vil.hostile&&vil.raceKey===p.raceKey&&currentNpc.t!=='MYSTERY')?0.85:1;
+  $('shop-sub').textContent=data.sub+(disc<1?' (Kin discount: 15% off)':'');
+  $('shop-gold').textContent='🪙 '+coins;
+  items.forEach(item=>{
+    const cost=item.cost>0?Math.ceil(item.cost*disc):0;
+    const div=document.createElement('div');
+    div.className='item-card';
+    div.innerHTML=`
+      <div class="item-info"><span class="item-title">${item.name}</span><span class="item-desc">${item.desc}</span></div>
+      <button class="act-btn" ${coins>=cost?'':'disabled'}>${cost===0?'Talk':cost+' 🪙'}</button>`;
+    div.querySelector('button').onclick=()=>{
+      if(coins>=cost){
+        coins-=cost;
+        item.action();
+        if(shopOpen) renderShopItems();
+        draw();
+      }
+    };
+    container.appendChild(div);
+  });
+}
+
+function closeShop(){
+  shopOpen=false;currentNpc=null;
+  $('shop-modal').style.display='none';
+  draw();
+}
+$('shop-close').onclick=closeShop;
+
+function addWeaponToInventory(wpn){
+  if(!p.inventory) p.inventory=[];
+  if(!p.inventory.some(i=>i.id===wpn.id)) p.inventory.push(wpn);
+  if(!p.equippedWeapon||wpn.atk>p.equippedWeapon.atk) equipWeapon(wpn);
+}
+
+function equipWeapon(wpn){
+  p.equippedWeapon=wpn;
+  say('Equipped '+wpn.icon+' '+wpn.name+' (+'+wpn.atk+' ATK)!');
+  if(invOpen) renderInventoryItems();
+  draw();
+}
+
+function openInventory(){
+  if(over||classModalOpen) return;
+  invOpen=true;
+  renderInventoryItems();
+  $('inv-modal').style.display='flex';
+}
+function closeInventory(){
+  invOpen=false;
+  $('inv-modal').style.display='none';
+  draw();
+}
+
+function invCard(container,icon,title,desc,btn,fn){
+  const d=document.createElement('div');
+  d.className='item-card';
+  d.innerHTML=`<div class="item-info"><span class="item-title">${icon} ${title}</span><span class="item-desc">${desc}</span></div><button class="act-btn">${btn}</button>`;
+  d.querySelector('button').onclick=()=>{fn();renderInventoryItems();};
+  container.appendChild(d);
+}
+
+function renderInventoryItems(){
+  const container=$('inv-list');
+  container.innerHTML='';
+  $('inv-gold').textContent='🪙 '+coins;
+
+  if((p.potions||0)>0) invCard(container,'🧪','Healing Potion (x'+p.potions+')','Restores +8 HP on consumption','Drink 🧪',usePotion);
+  if(p.manaPots>0) invCard(container,'🔷','Mana Potion (x'+p.manaPots+')','Restores +10 MP on consumption','Drink 🔷',useManaPotion);
+  if(p.runes>0) invCard(container,'🌀','Rune of Return (x'+p.runes+')','Teleports to the last friendly village visited','Use 🌀',useRune);
+  if(p.smoke>0) invCard(container,'💨','Smoke Bomb (x'+p.smoke+')','Blinds all enemies on this floor for 3 turns','Throw 💨',useSmoke);
+
+  (p.inventory||[]).forEach(wpn=>{
+    const isEquipped=p.equippedWeapon&&p.equippedWeapon.id===wpn.id;
+    const div=document.createElement('div');
+    div.className='item-card'+(isEquipped?' equipped':'');
+    div.innerHTML=`
+      <div class="item-info">
+        <span class="item-title">${wpn.icon} ${wpn.name} ${isEquipped?'⭐ [EQUIPPED]':''}</span>
+        <span class="item-desc">+${wpn.atk} Weapon Damage Bonus</span>
+      </div>
+      <button class="act-btn" ${isEquipped?'disabled':''}>${isEquipped?'Equipped':'Equip ⚔️'}</button>`;
+    if(!isEquipped) div.querySelector('button').onclick=()=>equipWeapon(wpn);
+    container.appendChild(div);
+  });
+
+  if(container.children.length===0) container.innerHTML='<div style="text-align:center;padding:12px;opacity:0.6;">Your inventory backpack is empty.</div>';
+}
+$('inv-btn').onclick=openInventory;
+$('inv-close').onclick=closeInventory;
+
+function openQuestLog(){questOpen=true;renderQuestList();$('quest-modal').style.display='flex';}
+function closeQuestLog(){questOpen=false;$('quest-modal').style.display='none';}
+function renderQuestList(){
+  const container=$('quest-list');container.innerHTML='';
+  [{title:'Ghoul Exterminator',data:quests.slayer},{title:'Slay the Vampire Lord',data:quests.vamp}].forEach(q=>{
+    if(q.data.active||q.data.done){
+      const div=document.createElement('div');
+      div.className='item-card';
+      div.innerHTML=`<div class="item-info"><span class="item-title">${q.title} ${q.data.done?'✅ [COMPLETED]':'⏳ [ACTIVE]'}</span><span class="item-desc">Progress: ${q.data.count}/${q.data.target} | Reward: ${q.data.rewardCoins} 🪙, ${q.data.rewardXp} XP</span></div>`;
+      container.appendChild(div);
+    }
+  });
+  if(container.children.length===0) container.innerHTML='<div style="text-align:center;padding:12px;opacity:0.6;">No active quests. Talk to Captain Vane and Scout Elena in the first village (Oakvale, Floor 2)!</div>';
+}
+$('quest-btn').onclick=openQuestLog;
+$('quest-close').onclick=closeQuestLog;
+
+/* ---------- Online leaderboard ---------- */
+const lb={db:null,user:null,uid:null,rows:[],mine:{coins:0,level:0,floor:0},loaded:false,readOnly:false,tab:'coins',timer:null,writing:false,error:''};
+
+async function initLeaderboard(){
+  try{
+    if(!window.claude||!window.claude.use) return;
+    const[db,user]=await Promise.all([window.claude.use('db'),window.claude.use('user')]);
+    if(!db) return;
+    lb.db=db;lb.user=user;
+    lb.uid=user?await user.id():null;
+    db.collection('scores').limit(200).onSnapshot(snap=>{
+      lb.rows=snap.docs.map(d=>Object.assign({id:d.id},d.data()));
+      const me=lb.rows.find(r=>r.id===lb.uid);
+      if(me) lb.mine={coins:me.coins||0,level:me.level||0,floor:me.floor||0};
+      lb.loaded=true;lb.error='';
+      if(lbOpen) renderLeaderboard();
+      queueSubmit();
+    },err=>{lb.error='Leaderboard unavailable ('+(err&&err.code||'error')+').';if(lbOpen) renderLeaderboard();});
+  }catch(e){lb.error='Leaderboard unavailable.';}
+}
+
+function lbEligible(){return !!(lb.db&&lb.uid&&lb.loaded&&!lb.readOnly&&p&&!p.cheated&&!godMode);}
+
+function queueSubmit(force){
+  if(!lbEligible()) return;
+  const peak=Math.max(p.peak||0,coins);
+  if(peak<=lb.mine.coins&&p.lv<=lb.mine.level&&fl<=lb.mine.floor) return;
+  if(force){flushScore();return;}
+  if(!lb.timer) lb.timer=setTimeout(flushScore,3000);
+}
+
+async function flushScore(){
+  clearTimeout(lb.timer);lb.timer=null;
+  if(lb.writing||!lbEligible()) return;
+  const peak=Math.max(p.peak||0,coins);
+  const next={
+    coins:Math.max(lb.mine.coins,peak),
+    level:Math.max(lb.mine.level,p.lv),
+    floor:Math.max(lb.mine.floor,fl),
+    hero:p.raceName+' '+p.className,
+    t:Date.now()
+  };
+  if(next.coins===lb.mine.coins&&next.level===lb.mine.level&&next.floor===lb.mine.floor) return;
+  lb.writing=true;
+  try{
+    await lb.db.doc('scores/'+lb.uid).set(next);
+    lb.mine=next;
+  }catch(e){
+    if(e&&(e.code==='invalid_argument'||e.code==='quota_exceeded')) lb.readOnly=true;
+  }
+  lb.writing=false;
+}
+
+async function renderLeaderboard(){
+  const list=$('lb-list');
+  document.querySelectorAll('#lb-tabs [data-tab]').forEach(b=>b.classList.toggle('tab-on',b.dataset.tab===lb.tab));
+  let msg;
+  if(!lb.db) msg=lb.error||'The leaderboard is offline. Open the published page while signed in to claude.ai to compete.';
+  else if(lb.error) msg=lb.error;
+  else if(!lb.uid) msg='You can view the board, but you need to be signed in to post scores.';
+  else if(p&&p.cheated) msg='Dev mode was used this run, so its scores will not be submitted.';
+  else if(lb.readOnly) msg='You have view-only access, so your scores cannot be saved.';
+  else msg='Scores post automatically. Runs where Dev mode was ever switched on never count.';
+  $('lb-status').textContent=msg;
+  const byCoins=(a,b)=>((b.coins||0)-(a.coins||0))||((b.level||0)-(a.level||0));
+  const byLevel=(a,b)=>((b.level||0)-(a.level||0))||((b.coins||0)-(a.coins||0));
+  const rows=lb.rows.slice().sort(lb.tab==='coins'?byCoins:byLevel).slice(0,20);
+  let names={};
+  try{if(lb.user&&rows.length) names=await lb.user.profiles(rows.map(r=>r.id));}catch(e){}
+  list.innerHTML='';
+  if(!rows.length){
+    const e=document.createElement('div');
+    e.style.cssText='text-align:center;padding:12px;opacity:0.6;';
+    e.textContent='No scores yet. Be the first on the board!';
+    list.appendChild(e);return;
+  }
+  rows.forEach((r,i)=>{
+    const div=document.createElement('div');
+    div.className='item-card'+(r.id===lb.uid?' equipped':'');
+    const info=document.createElement('div');info.className='item-info';
+    const t=document.createElement('span');t.className='item-title';
+    t.textContent='#'+(i+1)+' '+((names[r.id]&&names[r.id].name)||'Adventurer')+(r.id===lb.uid?' (you)':'');
+    const d=document.createElement('span');d.className='item-desc';
+    d.textContent=(r.hero||'Unknown hero')+' - deepest floor '+(r.floor||1);
+    info.append(t,d);
+    const v=document.createElement('span');v.className='item-title';
+    v.textContent=lb.tab==='coins'?'🪙 '+(r.coins||0):'⭐ Lv '+(r.level||1);
+    div.append(info,v);
+    list.appendChild(div);
+  });
+}
+function openLeaderboard(){lbOpen=true;$('lb-modal').style.display='flex';renderLeaderboard();}
+function closeLeaderboard(){lbOpen=false;$('lb-modal').style.display='none';draw();}
+$('lb-btn').onclick=openLeaderboard;
+$('lb-close').onclick=closeLeaderboard;
+document.querySelectorAll('#lb-tabs [data-tab]').forEach(b=>b.onclick=()=>{lb.tab=b.dataset.tab;renderLeaderboard();});
+
+function getEffectiveAtk(){return p.baseAtk+(p.equippedWeapon?p.equippedWeapon.atk:0)+(p.b&&p.b.atk>0?3:0);}
+function rageGain(n){if(p.resKind==='rage') p.mp=Math.min(p.maxMp,p.mp+n);p.combat=true;}
+function hurtPlayer(d){
+  if(p.b.divine>0) return 0;
+  if(p.b.wall>0) d=Math.ceil(d/2);
+  p.hp-=d;rageGain(3);
+  return d;
+}
+function magicPower(){return p.magic+(p.lv>>1);}
+function spellCost(s){return Math.max(1,s.cost-(p.raceKey==='elf'?1:0));}
+
+function reach(){
+  const s=new Set(['1,1']),q=[[1,1]];
+  while(q.length){
+    const[a,b]=q.pop();
+    for(const[d,e]of[[1,0],[-1,0],[0,1],[0,-1]]){
+      const k=(a+d)+','+(b+e);
+      if(a+d>=0&&b+e>=0&&a+d<W&&b+e<H&&!m[b+e][a+d]&&!s.has(k)){s.add(k);q.push([a+d,b+e]);}
+    }
+  }
+  return s;
+}
+
+function clearExitZone(){
+  for(let dy=-1;dy<=1;dy++)for(let dx=-1;dx<=1;dx++){
+    const tx=(W-2)+dx,ty=(H-2)+dy;
+    if(tx>=1&&ty>=1&&tx<=W-2&&ty<=H-2) m[ty][tx]=0;
+  }
+}
+function clearStartZone(){
+  for(let dy=0;dy<=1;dy++)for(let dx=0;dx<=1;dx++) m[dy+1][dx+1]=0;
+}
+
+function buildHouse(x0,y0,type,npcTag,signSymbol){
+  bld[y0][x0]='roof_l';bld[y0][x0+1]='roof_m';bld[y0][x0+2]='roof_r';
+  bld[y0+1][x0]='wall';bld[y0+1][x0+1]='sign_'+signSymbol;bld[y0+1][x0+2]='wall';
+  bld[y0+2][x0]='wall';bld[y0+2][x0+1]='door_'+npcTag;bld[y0+2][x0+2]='wall';
+  for(let dy=0;dy<3;dy++)for(let dx=0;dx<3;dx++) m[y0+dy][x0+dx]=1;
+  m[y0+2][x0+1]=0;
+  npcs.push({x:x0+1,y:y0+2,t:npcTag});
+}
+
+const ghoulAt=(a,b)=>gs.find(g=>g.x==a&&g.y==b);
+
+function gen(){
+  bld=[...Array(H)].map(()=>Array(W).fill(null));
+  gs=[];npcs=[];vil=null;
+
+  if(villageFloors[fl]){
+    const raceKey=villageFloors[fl],vr=VRACE[raceKey];
+    const home=(fl===2);
+    vil={
+      raceKey,label:vr.label,roof:vr.roof,
+      name:home?'Oakvale':vr.names[R(vr.names.length)],
+      hostile:!home&&raceKey!==p.raceKey&&Math.random()<.4
+    };
+    m=[...Array(H)].map((_,y)=>[...Array(W)].map((_,xx)=>(xx==0||y==0||xx==W-1||y==H-1)?1:0));
+
+    buildHouse(2,3,'Healer','H','✚');
+    buildHouse(6,3,'Elder','E','👑');
+    buildHouse(10,3,'Blacksmith','M','⚔');
+    buildHouse(14,3,'Armorer','A','🛡');
+    buildHouse(3,9,'Potions','P','🧪');
+    buildHouse(9,9,'General','G','🧰');
+
+    if(home){
+      npcs.push({x:18,y:7,t:'Q_GUARD'});
+      npcs.push({x:14,y:12,t:'Q_SCOUT'});
+    }
+    [[18,4],[19,10],[16,9],[6,13],[13,13],[18,12]].forEach(([a,b])=>{m[b][a]=1;});
+
+    if(vil.hostile){
+      clearStartZone();clearExitZone();
+      const r=reach(),cnt=4+(fl>>1),hp=8+fl*2;
+      let tries=0;
+      while(gs.length<cnt&&tries++<800){
+        const a=R(W),b=R(H);
+        if(!m[b][a]&&r.has(a+','+b)&&Math.abs(a-1)+Math.abs(b-1)>6&&!(a>=W-4&&b>=H-4)&&!ghoulAt(a,b)&&!npcs.some(o=>o.x==a&&o.y==b)){
+          gs.push({x:a,y:b,guard:true,name:vr.label+' Guard',hp,maxHp:hp});
+        }
+      }
+    }
+  } else {
+    do{
+      m=[...Array(H)].map(()=>[...Array(W)].map(()=>Math.random()<.14?1:0));
+      clearStartZone();clearExitZone();
+    }while(!reach().has((W-2)+','+(H-2)));
+    const r=reach();
+
+    if(fl===1){
+      let placed=false;
+      for(let k=0;k<400&&!placed;k++){
+        const a=1+R(W-2),b=1+R(H-2);
+        if(m[b][a]||!r.has(a+','+b)||Math.abs(a-1)+Math.abs(b-1)<4||(a>=W-3&&b>=H-3)) continue;
+        const open=[[1,0],[-1,0],[0,1],[0,-1]].filter(([d,e])=>!m[b+e][a+d]).length;
+        if(open>=3){npcs.push({x:a,y:b,t:'MYSTERY'});placed=true;}
+      }
+      if(!placed){m[3][4]=0;npcs.push({x:4,y:3,t:'MYSTERY'});}
+    }
+
+    if(fl===10){
+      const bx=W-5,by=Math.floor(H/2);
+      m[by][bx]=0;
+      gs.push({x:bx,y:by,v:true,boss:true,hp:120,maxHp:120,name:'Vampire Lord'});
+    } else {
+      const n=Math.min(4+fl,12),vc=fl>=3?Math.min(1+(fl>>2),4):0;
+      if(Math.random()<.4) for(let k=0;k<200;k++){
+        const a=R(W),b=R(H);
+        if(!m[b][a]&&r.has(a+','+b)&&Math.abs(a-1)+Math.abs(b-1)>2&&!(a>=W-3&&b>=H-3)&&!npcs.some(o=>o.x==a&&o.y==b)){
+          npcs.push({x:a,y:b,t:'T',gifted:false,used:false});break;
+        }
+      }
+      while(gs.length<n){
+        const a=R(W),b=R(H);
+        if(!m[b][a]&&r.has(a+','+b)&&Math.abs(a-1)+Math.abs(b-1)>4&&!(a>=W-3&&b>=H-3)&&!gs.some(g=>g.x==a&&g.y==b)&&!npcs.some(o=>o.x==a&&o.y==b)){
+          const v=gs.length<vc;
+          const hp=v?12+fl*3:6+Math.floor(fl*1.8);
+          gs.push({x:a,y:b,v,hp,maxHp:hp});
+        }
+      }
+    }
+  }
+  clearStartZone();clearExitZone();
+}
+
+function saveFloor(){floorData[fl]={m,bld,gs,npcs,vil};}
+function loadFloor(){
+  if(floorData[fl]){({m,bld,gs,npcs,vil}=floorData[fl]);}
+  else gen();
+}
+function arrive(base){
+  if(vil){
+    if(!vil.hostile){
+      lastFriendly=fl;
+      say(base+' Welcome to '+vil.name+', a '+vil.label+' village! Walk into any house to trade.');
+    } else {
+      say('⚠️ '+vil.name+' is a hostile '+vil.label+' village! Its guards attack outsiders on sight. Shops are closed to you.');
+    }
+  } else if(fl===10){
+    say(base+' ⚠️ WARNING: The Vampire Lord awaits at the center of this floor!');
+  } else say(base);
+}
+
+function start(){
+  if(p) queueSubmit(true);
+  if(shopOpen) closeShop();
+  if(invOpen) closeInventory();
+  if(questOpen) closeQuestLog();
+  openClassSelect();
+}
+
+function initRun(){
+  const r=RACES[selectedRaceKey],cl=CLASSES[selectedClassKey];
+  const totalHP=godMode?9999:(cl.hp+r.hpMod);
+  const baseAtk=godMode?999:(cl.atk+r.atkMod);
+  const mp=godMode?999:Math.max(0,cl.mp+r.mpMod);
+
+  quests.slayer={active:false,done:false,count:0,target:5,rewardCoins:40,rewardXp:20};
+  quests.vamp={active:false,done:false,count:0,target:1,rewardCoins:80,rewardXp:50};
+
+  p={
+    x:2,y:1,hp:totalHP,max:totalHP,baseAtk,lv:1,xp:0,
+    potions:godMode?99:cl.potions,
+    raceKey:selectedRaceKey,raceName:r.name,className:cl.name,icon:r.icon,
+    inventory:[cl.weapon],equippedWeapon:cl.weapon,isVampire:false,
+    mp:cl.res==='rage'&&!godMode?0:mp,maxMp:mp,magic:godMode?50:cl.mag+r.magMod,
+    manaPots:godMode?99:(cl.res==='mana'?(cl.mp>=24?2:1):0),
+    skills:cl.skills,role:cl.role,resKind:cl.res,hpLv:cl.hpLv,b:{wall:0,divine:0,atk:0},regenAmt:5,combat:false,peak:0,cheated:godMode,
+    runes:godMode?3:0,smoke:0,moves:0,face:[1,0],regen:0
+  };
+  coins=godMode?9999:(cl.coins+r.goldMod);
+  p.peak=coins;
+
+  villageFloors={2:'human'};
+  const pool=['dwarf','orc','elf','human'];
+  let f=2;
+  while(true){f+=3+R(2);if(f>=10)break;villageFloors[f]=pool[R(pool.length)];}
+  lastFriendly=null;vil=null;allies=[];
+  fl=1;floorData={};over=false;
+  gen();
+  arrive('Floor 1: '+r.icon+' '+r.name+' '+cl.name+' enters with '+cl.weapon.name+'!'+(godMode?' [GOD MODE ACTIVE]':''));
+  draw();
+}
+
+function usePotion(){
+  if(over||shopOpen||classModalOpen||questOpen) return;
+  if((p.potions||0)>0){
+    if(p.hp>=p.max){say('Health is already full!');return;}
+    p.potions--;p.hp=Math.min(p.max,p.hp+8);
+    say('Drank a Healing Potion! Restored +8 HP.');
+    draw();
+  } else say('No potions left! Buy potions at a village Alchemy Lab.');
+}
+
+function useManaPotion(){
+  if(over||shopOpen||classModalOpen||questOpen) return;
+  if(!p.manaPots){say('No mana potions. Buy some at the General Store or Alchemy Lab.');return;}
+  if(p.mp>=p.maxMp){say('Mana is already full!');return;}
+  p.manaPots--;p.mp=Math.min(p.maxMp,p.mp+10);
+  say('Drank a Mana Potion! Restored +10 MP.');
+  draw();
+}
+
+function useRune(){
+  if(over||shopOpen||classModalOpen||questOpen) return;
+  if(!p.runes){say('You have no Rune of Return. Buy one at a village General Store.');return;}
+  if(lastFriendly==null||!floorData[lastFriendly]&&fl!==lastFriendly){say('The rune stays dark: you have not visited a friendly village yet.');return;}
+  if(fl===lastFriendly){say('You are already in a friendly village.');return;}
+  p.runes--;
+  allies=[];
+  saveFloor();
+  fl=lastFriendly;
+  loadFloor();
+  p.x=2;p.y=1;
+  say('🌀 The Rune of Return flares! You are whisked back to '+vil.name+'.');
+  draw();
+}
+
+function useSmoke(){
+  if(over||shopOpen||classModalOpen||questOpen) return;
+  if(!p.smoke) return;
+  if(!gs.length){say('There is nothing here to blind.');return;}
+  p.smoke--;
+  gs.forEach(g=>{g.frozen=g.boss?2:3;});
+  say('💨 Smoke fills the air! Enemies are blinded for a few turns.');
+  draw();
+}
+
+function say(s){msg=s;$('log').textContent=s}
+const free=(a,b)=>a>=0&&b>=0&&a<W&&b<H&&!m[b][a]&&!ghoulAt(a,b)&&!npcs.some(o=>o.x==a&&o.y==b)&&!allies.some(o=>o.x==a&&o.y==b)&&!(p.x==a&&p.y==b);
+
+const nameOf=g=>g.boss?'Vampire Lord':g.v?'Vampire':g.guard?g.name:'Ghoul';
+
+function killEnemy(g){
+  gs.splice(gs.indexOf(g),1);
+  let t='';
+  if(!g.v&&!g.guard&&quests.slayer.active&&!quests.slayer.done) quests.slayer.count++;
+  if(g.boss){quests.vamp.count=1;t='🏆 VAMPIRE LORD SLAIN! The kingdom is saved! ';}
+  const v=(g.boss?30:g.v?8:g.guard?5:2)+fl+R(3);
+  const xp=g.boss?100:g.v?12+fl*2:g.guard?6+fl:5+fl;
+  coins+=v;p.xp+=xp;
+  t+=nameOf(g)+' slain! +'+v+' gold, +'+xp+' XP.';
+  while(p.xp>=p.lv*8){
+    p.xp-=p.lv*8;p.lv++;p.max+=p.hpLv;p.baseAtk+=p.lv%2?1:0;p.hp=p.max;p.maxMp+=2;if(p.resKind!=='rage') p.mp=p.maxMp;
+    t+=' LEVEL UP! Lv '+p.lv+' - HP restored!';
+    p.skills.forEach(sk=>{if(sk.lv===p.lv)t+=' New skill: '+sk.name+'!';});
+  }
+  return t;
+}
+
+function hitMsg(g,d){
+  g.hp-=d;
+  if(g.hp<=0) return killEnemy(g);
+  return nameOf(g)+' takes '+d+' damage.';
+}
+
+function castSpell(i){
+  if(over||shopOpen||classModalOpen||invOpen||questOpen||lbOpen) return;
+  const s=i<4?p.skills[i]:VSPELLS[i-4];if(!s) return;
+  if(s.vamp&&!p.isVampire){say('Only a vampire can cast '+s.name+'. Seek the Mysterious Shrine on Floor 1.');return;}
+  if(p.lv<s.lv){say(s.name+' unlocks at level '+s.lv+'.');return;}
+  const cost=spellCost(s),rn=RES[p.resKind].n;
+  if(!godMode&&p.mp<cost){say('Not enough '+rn+' for '+s.name+' ('+cost+' needed).');return;}
+  const mag=magicPower(),atk=getEffectiveAtk(),out=[];
+  const dist=g=>Math.abs(g.x-p.x)+Math.abs(g.y-p.y);
+  const lineTarget=range=>{
+    const[fx,fy]=p.face;let a=p.x,b=p.y;
+    for(let k=0;k<range;k++){
+      a+=fx;b+=fy;
+      if(a<0||b<0||a>=W||b>=H||m[b][a]||npcs.some(o=>o.x==a&&o.y==b)) return null;
+      const t=ghoulAt(a,b);if(t) return t;
+    }
+    return null;
+  };
+  const dmgFor=g=>{
+    const v=s.scale==='atk'?atk+R(3):mag+R(s.var||4);
+    let d=Math.max(1,Math.round(v*(s.mult||1))+(s.base||0));
+    if(s.exec&&g.hp<=g.maxHp*0.4) d*=2;
+    if(s.ambush&&g.frozen>0) d=Math.ceil(d*1.5);
+    return d;
+  };
+  const strike=g=>{
+    const d=dmgFor(g);
+    out.push(hitMsg(g,d));
+    rageGain(3);
+    if(s.drain) p.hp=Math.min(p.max,p.hp+d);
+    if(s.heal) p.hp=Math.min(p.max,p.hp+s.heal);
+    if(gs.includes(g)){
+      if(s.freeze) g.frozen=g.boss?1:s.freeze;
+      if(s.dot) g.dot={d:s.dot.d+(s.dot.mag?(mag>>1):0),t:s.dot.t};
+    }
+  };
+
+  if(s.type==='melee'||s.type==='ranged'){
+    const melee=s.type==='melee';
+    const t=lineTarget(melee?1:s.range);
+    if(!t){say(melee?'No enemy in front of you. Face an adjacent enemy first.':'No target in line. Face an enemy within '+s.range+' tiles first.');return;}
+    out.push(s.icon+' '+s.name+'!');
+    strike(t);
+  } else if(s.type==='aoe'){
+    const tg=gs.filter(g=>dist(g)<=s.radius);
+    if(!tg.length&&!(s.heal&&p.hp<p.max)){say('No enemies within '+s.radius+' tile'+(s.radius>1?'s':'')+'.');return;}
+    out.push(s.icon+' '+s.name+'!');
+    tg.forEach(strike);
+  } else if(s.type==='multi'){
+    const tg=gs.filter(g=>dist(g)<=s.range).sort((u,v)=>dist(u)-dist(v)).slice(0,s.n);
+    if(!tg.length){say('No enemies within '+s.range+' tiles.');return;}
+    out.push(s.icon+' '+s.name+'!');
+    tg.forEach(strike);
+  } else if(s.type==='heal'){
+    if(p.hp>=p.max){say('Health is already full!');return;}
+    const h=s.amount+mag;
+    p.hp=Math.min(p.max,p.hp+h);
+    out.push(s.icon+' '+s.name+'! Restored '+h+' HP.');
+  } else if(s.type==='hot'){
+    p.regen=s.turns;p.regenAmt=s.amt+mag;
+    out.push(s.icon+' '+s.name+'! Healing '+p.regenAmt+' HP per turn for '+s.turns+' turns.');
+  } else if(s.type==='buff'){
+    p.b[s.buff]=s.turns;
+    out.push(s.icon+' '+s.name+'! Active for '+s.turns+' turns.');
+  } else if(s.type==='vanish'){
+    const tg=gs.filter(g=>dist(g)<=6);
+    if(!tg.length){say('No enemies nearby to slip away from.');return;}
+    tg.forEach(g=>{g.frozen=g.boss?2:3;});
+    out.push(s.icon+' '+s.name+'! Enemies lose sight of you.');
+  } else if(s.type==='summon'){
+    allies=allies.filter(a=>a.name!==s.ally);
+    const cand=[];
+    for(let dy=-3;dy<=3;dy++)for(let dx=-3;dx<=3;dx++){
+      const a=p.x+dx,b=p.y+dy;
+      if((dx||dy)&&free(a,b)) cand.push([a,b,Math.abs(dx)+Math.abs(dy)]);
+    }
+    cand.sort((u,v)=>u[2]-v[2]);
+    const hp=s.hp+fl*s.hpFl+mag*s.magHp;
+    let made=0;
+    for(const[a,b]of cand){
+      if(made>=s.count) break;
+      if(free(a,b)){allies.push({x:a,y:b,hp,maxHp:hp,ttl:s.ttl,name:s.ally,ch:s.ch,pow:s.pow});made++;}
+    }
+    if(!made){say('There is no room to summon here.');return;}
+    out.push(s.icon+' '+s.name+'! '+made+' '+s.ally+(made>1?'s':'')+' now fight'+(made>1?'':'s')+' for you.');
+  }
+  if(!godMode) p.mp-=cost;
+  p.mp=Math.max(0,p.mp);
+  say(out.join(' '));
+  endTurn();
+}
+
+function useSlot(i){
+  if(i<4) castSpell(i);
+  else if(i===4) useManaPotion();
+  else if(i===5) useRune();
+  else if(i===6) castSpell(4);
+  else if(i===7) castSpell(5);
+}
+$('hotbar').onclick=e=>{
+  const b=e.target.closest('[data-slot]');
+  if(b) useSlot(+b.dataset.slot);
+};
+
+function renderHotbar(){
+  if(!p) return;
+  const rn=RES[p.resKind].n;
+  let h='';
+  p.skills.forEach((sk,i)=>{
+    const lock=p.lv<sk.lv,dry=!lock&&!godMode&&p.mp<spellCost(sk);
+    h+=`<button class="hb${lock?' locked':''}${dry?' dry':''}" data-slot="${i}" title="${sk.name}: ${sk.desc}"><span class="k">${i+1}</span>${sk.icon}<small>${lock?'Lv '+sk.lv:spellCost(sk)+' '+rn}</small></button>`;
+  });
+  h+=`<button class="hb${p.manaPots?'':' locked'}" data-slot="4" title="Restorative: restore 10 ${rn}"><span class="k">5</span>🔷<small>x${p.manaPots}</small></button>`;
+  h+=`<button class="hb${p.runes?'':' locked'}" data-slot="5" title="Rune of Return: teleport to last friendly village"><span class="k">6</span>🌀<small>x${p.runes}</small></button>`;
+  if(p.isVampire){
+    VSPELLS.forEach((sk,k)=>{
+      const dry=!godMode&&p.mp<spellCost(sk);
+      h+=`<button class="hb${dry?' dry':''}" data-slot="${6+k}" title="${sk.name}: ${sk.desc}"><span class="k">${7+k}</span>${sk.icon}<small>${spellCost(sk)} ${rn}</small></button>`;
+    });
+  }
+  $('hotbar').innerHTML=h;
+}
+
+function dotTick(){
+  const out=[];
+  for(const g of [...gs]){
+    if(g.dot&&g.dot.t>0){
+      g.hp-=g.dot.d;g.dot.t--;
+      if(g.hp<=0) out.push('☠ '+killEnemy(g));
+    }
+  }
+  if(out.length) say(out.join(' '));
+}
+
+function regenRes(){
+  const k=p.resKind;
+  if(k==='mana'){if(p.moves%(p.raceKey==='elf'?2:4)===0) p.mp++;}
+  else if(k==='energy') p.mp+=2;
+  else if(k==='focus'){if(p.moves%2===0) p.mp++;}
+  else if(k==='rage'){if(!p.combat&&p.mp>0) p.mp--;}
+  p.mp=Math.max(0,Math.min(p.maxMp,p.mp));
+  p.combat=false;
+  for(const key in p.b) if(p.b[key]>0) p.b[key]--;
+}
+
+function enemyTurn(){
+  for(const g of gs){
+    if(g.frozen>0){g.frozen--;continue;}
+    for(let s=0;s<(g.v?2:1);s++){
+      const dx=p.x-g.x,dy=p.y-g.y;
+      if(Math.abs(dx)+Math.abs(dy)==1){
+        if(s==0&&Math.random()<(g.boss?.95:g.v?.9:.85)){
+          const baseDmg=g.boss?5+R(4):g.v?3+R(2)+(fl>>2):g.guard?3+R(2)+(fl>3?1:0):2+R(3)+(fl>5?1:0);
+          if(godMode){
+            say('⚡ GOD MODE: Blocked '+baseDmg+' enemy damage!');
+          } else {
+            const dealt=hurtPlayer(baseDmg);
+            if(dealt===0) say('✨ Divine Shield blocks the attack!');
+            else if(g.v){
+              g.hp=Math.min(g.hp+dealt,g.maxHp);
+              say((g.boss?'Vampire Lord':'Vampire')+' bites you for '+dealt+' damage & drains blood!');
+            } else if(g.guard) say('A '+g.name+' strikes you for '+dealt+' damage!');
+            else say('A ghoul claws you for '+dealt+' damage!');
+          }
+        }
+        break;
+      } else if(allies.some(o=>Math.abs(o.x-g.x)+Math.abs(o.y-g.y)===1)){
+        const al=allies.find(o=>Math.abs(o.x-g.x)+Math.abs(o.y-g.y)===1);
+        if(s==0&&Math.random()<.85){
+          const dmg=g.boss?5+R(4):g.v?3+R(2)+(fl>>2):g.guard?3+R(2):2+R(3);
+          al.hp-=dmg;
+          say('The '+nameOf(g)+' hits your '+al.name+' for '+dmg+'!');
+        }
+        break;
+      } else if(Math.abs(dx)+Math.abs(dy)<13){
+        const sx=Math.sign(dx),sy=Math.sign(dy);
+        const tries=Math.abs(dx)>Math.abs(dy)?[[sx,0],[0,sy]]:[[0,sy],[sx,0]];
+        for(const[tx,ty]of tries)if((tx||ty)&&free(g.x+tx,g.y+ty)){g.x+=tx;g.y+=ty;break}
+      }
+    }
+  }
+}
+
+function allyTurn(){
+  const out=[];
+  for(const al of allies){
+    const adj=gs.find(g=>Math.abs(g.x-al.x)+Math.abs(g.y-al.y)===1);
+    if(adj){
+      const d=2+R(3)+(fl>>1)+(magicPower()>>1)+(al.pow||0);
+      adj.hp-=d;
+      if(adj.hp<=0) out.push('Your '+al.name+' fells a foe! '+killEnemy(adj));
+      continue;
+    }
+    let tgt=null,bd=99;
+    for(const g of gs){const d=Math.abs(g.x-al.x)+Math.abs(g.y-al.y);if(d<bd){bd=d;tgt=g;}}
+    let gx,gy;
+    if(tgt&&bd<=10){gx=tgt.x;gy=tgt.y;}
+    else if(Math.abs(p.x-al.x)+Math.abs(p.y-al.y)>2){gx=p.x;gy=p.y;}
+    else continue;
+    const dx=gx-al.x,dy=gy-al.y,sx=Math.sign(dx),sy=Math.sign(dy);
+    const tries=Math.abs(dx)>Math.abs(dy)?[[sx,0],[0,sy]]:[[0,sy],[sx,0]];
+    for(const[tx,ty]of tries)if((tx||ty)&&free(al.x+tx,al.y+ty)){al.x+=tx;al.y+=ty;break;}
+  }
+  allies.forEach(a=>a.ttl--);
+  allies=allies.filter(a=>a.hp>0&&a.ttl>0);
+  if(out.length) say(out.join(' '));
+}
+
+function endTurn(){
+  if(p.regen>0){
+    const h=p.regenAmt||5;
+    p.hp=Math.min(p.max,p.hp+h);
+    p.regen--;
+    say('🩸 You regenerate '+h+' HP.'+(p.regen?' ('+p.regen+' moves left)':''));
+  }
+  dotTick();
+  allyTurn();
+  enemyTurn();
+  allies=allies.filter(a=>a.hp>0);
+  p.moves++;
+  regenRes();
+  if(p.hp<=0&&!godMode){
+    p.hp=0;over=true;
+    if(coins>best){best=coins;try{localStorage.setItem('gc_best',best)}catch(e){}}
+    say('You perished with '+coins+' gold. Press New Run to try again!');
+    queueSubmit(true);
+  }
+  draw();
+}
+
+function move(dx,dy){
+  if(over||shopOpen||classModalOpen||invOpen||questOpen||lbOpen) return;
+  p.face=[dx,dy];
+  const a=p.x+dx,b=p.y+dy;
+  if(a<0||b<0||a>=W||b>=H||m[b][a]){draw();return;}
+
+  const g=ghoulAt(a,b);
+  const n=npcs.find(o=>o.x==a&&o.y==b);
+  const tileBld=bld?bld[b][a]:null;
+
+  if(n){openShop(n.t,n);return;}
+  else if(tileBld&&tileBld.startsWith('door_')){
+    const tag=tileBld.split('_')[1];
+    openShop(tag,npcs.find(o=>o.t===tag));
+    return;
+  } else if(g){
+    const d=getEffectiveAtk()+R(3);
+    g.hp-=d;rageGain(3);
+    if(g.hp<=0) say(killEnemy(g));
+    else say('You hit '+nameOf(g)+' for '+d+' damage.');
+  } else {
+    const swap=allies.find(o=>o.x==a&&o.y==b);
+    if(swap){swap.x=p.x;swap.y=p.y;}
+    p.x=a;p.y=b;
+
+    if(a===1&&b===1&&fl>1){
+      allies=[];
+      saveFloor();
+      fl--;
+      loadFloor();
+      p.x=W-3;p.y=H-2;
+      arrive('Followed the trail back up to Floor '+fl+'.');
+      draw();return;
+    }
+    if(a===W-2&&b===H-2){
+      allies=[];
+      saveFloor();
+      fl++;
+      p.hp=Math.min(p.max,p.hp+3);
+      loadFloor();
+      p.x=2;p.y=1;
+      arrive('Descended to Floor '+fl+'. Rested +3 HP.');
+      draw();return;
+    }
+  }
+  endTurn();
+}
+
+function draw(){
+  const cw=W*T,ch=H*T;
+  x.fillStyle=css('--floor');x.fillRect(0,0,cw,ch);
+  const cRoof=vil?vil.roof:css('--bld-roof'),cWall=css('--bld-wall'),cTree=css('--wall');
+
+  for(let j=0;j<H;j++)for(let i=0;i<W;i++){
+    const l=i*T,t=j*T,bt=bld?bld[j][i]:null;
+    if(bt){
+      if(bt.startsWith('roof')){
+        x.fillStyle=cRoof;
+        x.beginPath();
+        if(bt==='roof_l'){x.moveTo(l+T,t);x.lineTo(l+T,t+T);x.lineTo(l+4,t+T);}
+        else if(bt==='roof_r'){x.moveTo(l,t);x.lineTo(l+T-4,t+T);x.lineTo(l,t+T);}
+        else x.fillRect(l,t+4,T,T-4);
+        x.fill();
+        x.fillStyle='rgba(0,0,0,0.35)';x.fillRect(l,t+T-4,T,4);
+      } else if(bt==='wall'||bt.startsWith('sign')){
+        x.fillStyle=cWall;x.fillRect(l,t,T,T);
+        x.fillStyle='#fef08a';x.fillRect(l+8,t+8,6,6);
+        if(bt.startsWith('sign_')){
+          x.fillStyle='#3f2312';x.fillRect(l+4,t+2,24,20);
+          x.fillStyle='#fbbf24';x.font='bold 14px monospace';
+          x.textAlign='center';x.textBaseline='middle';
+          x.fillText(bt.split('_')[1],l+16,t+12);
+        }
+      } else if(bt.startsWith('door')){
+        x.fillStyle='#3f2312';x.fillRect(l+2,t,T-4,T);
+        x.fillStyle='#f59e0b';x.fillRect(l+T-8,t+14,3,3);
+        x.fillStyle='rgba(251,191,36,0.3)';x.fillRect(l+4,t+T-4,T-8,4);
+      }
+    } else if(m[j][i]){
+      x.fillStyle='#5c3d2e';x.fillRect(l+13,t+20,6,10);
+      x.fillStyle=cTree;x.beginPath();
+      x.moveTo(l+16,t+2);x.lineTo(l+29,t+22);x.lineTo(l+3,t+22);x.fill();
+    }
+  }
+
+  x.textAlign='center';x.textBaseline='middle';
+  if(fl>1){
+    x.fillStyle=css('--coin');x.font='bold 26px monospace';
+    x.fillText('<',1*T+16,1*T+16);
+  }
+  x.fillStyle=css('--coin');x.font='bold 26px monospace';
+  x.fillText('>',(W-2)*T+16,(H-2)*T+16);
+
+  for(const g of gs){
+    if(g.boss){
+      x.fillStyle=css('--boss');x.font='bold 28px monospace';
+      x.fillText('👑V',g.x*T+16,g.y*T+16);
+      x.font='bold 10px monospace';x.fillText(g.hp,g.x*T+26,g.y*T+7);
+    } else {
+      x.fillStyle=g.guard?'#fb923c':g.v?css('--bad'):css('--ghoul');
+      x.font='bold 24px monospace';
+      x.fillText(g.guard?'G':g.v?'V':'g',g.x*T+16,g.y*T+16);
+      x.font='bold 10px monospace';x.fillText(g.hp,g.x*T+26,g.y*T+7);
+    }
+    if(g.frozen>0){
+      x.font='12px monospace';x.fillStyle='#7dd3fc';
+      x.fillText('❄',g.x*T+6,g.y*T+7);
+    }
+    if(g.dot&&g.dot.t>0){
+      x.font='12px monospace';x.fillStyle='#a3e635';
+      x.fillText('☠',g.x*T+6,g.y*T+26);
+    }
+  }
+
+  for(const al of allies){
+    x.fillStyle=al.ch==='i'?'#f472b6':'#4ade80';x.font='bold 24px monospace';
+    x.fillText(al.ch||'g',al.x*T+16,al.y*T+16);
+    x.font='bold 10px monospace';x.fillText(al.hp,al.x*T+26,al.y*T+7);
+  }
+
+  x.font='bold 22px monospace';
+  for(const o of npcs){
+    if(o.t==='MYSTERY') x.fillText('🧙',o.x*T+16,o.y*T+16);
+    else if(o.t==='Q_GUARD') x.fillText('🛡️',o.x*T+16,o.y*T+16);
+    else if(o.t==='Q_SCOUT') x.fillText('🏹',o.x*T+16,o.y*T+16);
+    else{x.fillStyle=css('--npc');x.fillText(o.t,o.x*T+16,o.y*T+16);}
+  }
+
+  x.font='bold 24px monospace';
+  x.fillStyle=over?css('--bad'):css('--me');
+  x.fillText(over?'x':(p.icon||'@'),p.x*T+16,p.y*T+16);
+  if(!over&&p.face){
+    x.fillStyle=css('--coin');
+    x.fillRect(p.x*T+16+p.face[0]*14-2,p.y*T+16+p.face[1]*14-2,4,4);
+  }
+
+  if(vil){
+    const lbl=(vil.hostile?'⚔ ':'🏘 ')+vil.name+(vil.hostile?' (Hostile)':'');
+    x.font='bold 12px monospace';x.textAlign='center';x.textBaseline='middle';
+    const w=x.measureText(lbl).width+16;
+    x.fillStyle='rgba(0,0,0,0.65)';x.fillRect(cw/2-w/2,2,w,18);
+    x.fillStyle=vil.hostile?'#f87171':'#fde68a';
+    x.fillText(lbl,cw/2,11);
+  }
+
+  if(p){
+    const totalAtk=getEffectiveAtk();
+    $('hero').textContent=(p.icon||'🧍')+' '+p.raceName+' '+p.className+' ['+p.role+']';
+    $('hp').textContent='❤ '+p.hp+'/'+p.max+' ⚔ '+(totalAtk+1)+'-'+(totalAtk+3)+' Lv '+p.lv+' ('+p.xp+'/'+p.lv*8+')';
+    $('mp').textContent=RES[p.resKind].i+' '+p.mp+'/'+p.maxMp+' 🔮 '+magicPower()+(p.regen>0?' 🩸'+p.regen:'')+(p.b.wall>0?' 🧱'+p.b.wall:'')+(p.b.divine>0?' 🔰'+p.b.divine:'')+(p.b.atk>0?' 📣'+p.b.atk:'');
+    $('weapon').textContent=p.equippedWeapon?(p.equippedWeapon.icon+' +'+p.equippedWeapon.atk):'🗡️ +0';
+    $('co').textContent='🪙 '+coins;
+    $('fl').textContent='Floor '+fl;
+    $('po').textContent='🧪 '+(p.potions||0);
+    $('be').textContent='Best '+best;
+    renderHotbar();
+    if(coins>(p.peak||0)) p.peak=coins;
+    queueSubmit();
+  }
+}
+
+document.addEventListener('keydown',e=>{
+  if(e.repeat) return;
+  if(e.key==='Escape'){
+    if(shopOpen) closeShop();
+    if(invOpen) closeInventory();
+    if(questOpen) closeQuestLog();
+    if(lbOpen) closeLeaderboard();
+    return;
+  }
+  if(!p) return;
+  const k={ArrowUp:[0,-1],w:[0,-1],ArrowDown:[0,1],s:[0,1],ArrowLeft:[-1,0],a:[-1,0],ArrowRight:[1,0],d:[1,0]}[e.key];
+  if(k){e.preventDefault();move(...k)}
+  const lk=e.key.toLowerCase();
+  if(lk==='e'||e.key===' ') usePotion();
+  if(lk==='r') useRune();
+  if(e.key>='1'&&e.key<='8') useSlot(+e.key-1);
+  if(lk==='i'){if(invOpen) closeInventory(); else openInventory();}
+  if(lk==='q'){if(questOpen) closeQuestLog(); else openQuestLog();}
+});
+
+document.querySelectorAll('[data-d]').forEach(b=>b.onclick=()=>move(...b.dataset.d.split(',').map(Number)));
+$('pot-btn').onclick=usePotion;
+$('re').onclick=start;
+start();
+initLeaderboard();
+</script></body></html>
